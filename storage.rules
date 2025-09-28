@@ -1,4 +1,16 @@
 rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isSignedIn() { return request.auth != null; }
+
+    match /groups/{groupId}/expenses/{expenseId}/receipt.jpg {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
+    }
+  }
+}
+
+rules_version = '2';
 
 // Craft rules based on data in your Firestore database
 // allow write: if firestore.get(

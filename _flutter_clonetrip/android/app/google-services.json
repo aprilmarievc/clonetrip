@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1907668067",
+    "project_id": "clonetrip2025",
+    "storage_bucket": "clonetrip2025.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1907668067:android:567b92e8cf824ab772f456",
+        "android_client_info": {
+          "package_name": "com.example.clonetrip"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD4Zg_5oqLhqAR2VK5R4hcUnjXpGdiiIhk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

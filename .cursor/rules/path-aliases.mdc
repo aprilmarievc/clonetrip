@@ -1,0 +1,25 @@
+---
+alwaysApply: true
+---
+## Repository Path Aliases
+
+These aliases are used in discussion and Cursor navigation to refer to key areas of the repository. They do not change runtime imports unless separately configured.
+
+- `@functions/` → [functions/src/](mdc:functions/src/)
+  - Cloud Functions TypeScript source directory
+
+- `@public/` → [public/](mdc:public/)
+  - Firebase Hosting public root and Flutter web build output
+
+- `@_flutter_clonetrip/` → [_flutter_clonetrip/](mdc:_flutter_clonetrip/)
+  - Flutter application project root
+
+### Notes
+- Firebase Functions are implemented in TypeScript (Node.js).
+- TypeScript compiler options for Cloud Functions are configured in [functions/tsconfig.json](mdc:functions/tsconfig.json).
+- Flutter/Dart imports are managed via [_flutter_clonetrip/pubspec.yaml](mdc:_flutter_clonetrip/pubspec.yaml) and do not use these aliases.
+- To build Flutter web into `public/`, run:
+```bash
+cd _flutter_clonetrip
+flutter build web --release -o ../public
+```
