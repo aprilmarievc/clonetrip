@@ -10,7 +10,8 @@ class AddItinerarySheet extends StatefulWidget {
   final bool isWishlist;
   final Future<void> Function({
     required String title,
-    required String countryCode,
+    String? countryCode,
+    List<String>? cities,
     String? startDateIso,
     String? endDateIso,
   })
@@ -23,6 +24,7 @@ class AddItinerarySheet extends StatefulWidget {
 class _AddItinerarySheetState extends State<AddItinerarySheet> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
+  final _citiesController = TextEditingController();
   final _countryController = TextEditingController(text: 'US');
   final _startController = TextEditingController();
   final _endController = TextEditingController();
@@ -57,12 +59,11 @@ class _AddItinerarySheetState extends State<AddItinerarySheet> {
                 validator: (v) => v == null || v.isEmpty ? 'Required' : null,
               ),
               TextFormField(
-                controller: _countryController,
+                controller: _citiesController,
                 decoration: const InputDecoration(
-                  labelText: 'Country Code (e.g., US, JP)',
+                  labelText: 'Cities (comma-separated)',
+                  hintText: 'e.g., Tokyo, Kyoto',
                 ),
-                validator: (v) =>
-                    v == null || v.length != 2 ? '2-letter code' : null,
               ),
               Row(
                 children: [
@@ -85,6 +86,12 @@ class _AddItinerarySheetState extends State<AddItinerarySheet> {
                   ),
                 ],
               ),
+              TextFormField(
+                controller: _countryController,
+                decoration: const InputDecoration(
+                  labelText: 'Country Code (optional, e.g., US, JP)',
+                ),
+              ),
               const SizedBox(height: 12),
               Align(
                 alignment: Alignment.centerRight,
@@ -94,17 +101,44 @@ class _AddItinerarySheetState extends State<AddItinerarySheet> {
                       : () async {
                           if (!_formKey.currentState!.validate()) return;
                           setState(() => _saving = true);
-                          await widget.onSubmit(
-                            title: _titleController.text.trim(),
-                            countryCode: _countryController.text.trim(),
-                            startDateIso: _startController.text.trim().isEmpty
+                          try {
+                            final cc = _countryController.text.trim();
+                            final citiesText = _citiesController.text.trim();
+                            final List<String>? cities = citiesText.isEmpty
                                 ? null
-                                : _startController.text.trim(),
-                            endDateIso: _endController.text.trim().isEmpty
-                                ? null
-                                : _endController.text.trim(),
-                          );
-                          if (mounted) Navigator.pop(context);
+                                : citiesText
+                                    .split(',')
+                                    .map((s) => s.trim())
+                                    .where((s) => s.isNotEmpty)
+                                    .toList();
+                            await widget.onSubmit(
+                              title: _titleController.text.trim(),
+                              countryCode: cc.isEmpty ? null : cc,
+                              cities: cities,
+                              startDateIso: _startController.text.trim().isEmpty
+                                  ? null
+                                  : _startController.text.trim(),
+                              endDateIso: _endController.text.trim().isEmpty
+                                  ? null
+                                  : _endController.text.trim(),
+                            );
+                            if (!mounted) return;
+                            Navigator.pop(context);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Trip created'),
+                                duration: Duration(seconds: 2),
+                              ),
+                            );
+                          } catch (e) {
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Failed to save: $e')),
+                              );
+                            }
+                          } finally {
+                            if (mounted) setState(() => _saving = false);
+                          }
                         },
                   icon: const Icon(Icons.check),
                   label: Text(_saving ? 'Saving...' : 'Save'),

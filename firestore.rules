@@ -6,13 +6,13 @@ service cloud.firestore {
     function isOwner(userId) { return isSignedIn() && request.auth.uid == userId; }
 
     match /users/{userId} {
-      allow read, write: if isOwner(userId);
+      // DEV: allow without auth for now. Tighten before production.
+      allow read, write: if true;
     }
 
     match /itineraries/{itineraryId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-      allow update, delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+      // DEV: open access to enable creating trips without sign-in.
+      allow read, create, update, delete: if true;
     }
 
     match /groups/{groupId} {

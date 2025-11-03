@@ -11,6 +11,7 @@ import 'package:country_flags/country_flags.dart';
 import 'widgets/add_itinerary_sheet.dart';
 import 'firebase_options.dart';
 import 'pages/itinerary_editor_page.dart';
+import 'models/itinerary.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -65,46 +66,33 @@ class MyApp extends StatelessWidget {
           tertiary: const Color(0xFFFFFF00), // bright yellow
         );
 
-    TextTheme applyBlackMangoToTitles(TextTheme base) {
-      const String blackMango = 'Tan Mon Cheri';
+    TextTheme interTitlesOnly(TextTheme base) {
+      // Ensure Inter is used by default across all text styles
       const List<String> fallback = ['Inter', 'sans-serif'];
       return base.copyWith(
-        displayLarge: base.displayLarge?.copyWith(
-          fontFamily: blackMango,
-          fontFamilyFallback: fallback,
-        ),
+        displayLarge: base.displayLarge?.copyWith(fontFamilyFallback: fallback),
         displayMedium: base.displayMedium?.copyWith(
-          fontFamily: blackMango,
           fontFamilyFallback: fallback,
         ),
-        displaySmall: base.displaySmall?.copyWith(
-          fontFamily: blackMango,
-          fontFamilyFallback: fallback,
-        ),
+        displaySmall: base.displaySmall?.copyWith(fontFamilyFallback: fallback),
         headlineLarge: base.headlineLarge?.copyWith(
-          fontFamily: blackMango,
           fontFamilyFallback: fallback,
         ),
         headlineMedium: base.headlineMedium?.copyWith(
-          fontFamily: blackMango,
           fontFamilyFallback: fallback,
         ),
         headlineSmall: base.headlineSmall?.copyWith(
-          fontFamily: blackMango,
           fontFamilyFallback: fallback,
         ),
-        titleLarge: base.titleLarge?.copyWith(
-          fontFamily: blackMango,
-          fontFamilyFallback: fallback,
-        ),
-        titleMedium: base.titleMedium?.copyWith(
-          fontFamily: blackMango,
-          fontFamilyFallback: fallback,
-        ),
-        titleSmall: base.titleSmall?.copyWith(
-          fontFamily: blackMango,
-          fontFamilyFallback: fallback,
-        ),
+        titleLarge: base.titleLarge?.copyWith(fontFamilyFallback: fallback),
+        titleMedium: base.titleMedium?.copyWith(fontFamilyFallback: fallback),
+        titleSmall: base.titleSmall?.copyWith(fontFamilyFallback: fallback),
+        bodyLarge: base.bodyLarge?.copyWith(fontFamilyFallback: fallback),
+        bodyMedium: base.bodyMedium?.copyWith(fontFamilyFallback: fallback),
+        bodySmall: base.bodySmall?.copyWith(fontFamilyFallback: fallback),
+        labelLarge: base.labelLarge?.copyWith(fontFamilyFallback: fallback),
+        labelMedium: base.labelMedium?.copyWith(fontFamilyFallback: fallback),
+        labelSmall: base.labelSmall?.copyWith(fontFamilyFallback: fallback),
       );
     }
 
@@ -115,15 +103,15 @@ class MyApp extends StatelessWidget {
     final ThemeData baseLight = ThemeData(
       colorScheme: colorSchemeLight,
       scaffoldBackgroundColor: Colors.white,
-      textTheme: applyBlackMangoToTitles(interLight),
+      textTheme: interTitlesOnly(interLight),
       cardColor: Colors.white,
-      appBarTheme: AppBarTheme(
+      appBarTheme: const AppBarTheme(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.black87),
-        titleTextStyle: const TextStyle(
-          fontFamily: 'Tan Mon Cheri',
-          fontFamilyFallback: ['Inter', 'sans-serif'],
+        iconTheme: IconThemeData(color: Colors.black87),
+        titleTextStyle: TextStyle(
+          // Use Inter for all app bar titles by default (light)
+          fontFamily: 'Inter',
           fontSize: 20,
           fontWeight: FontWeight.w600,
           color: Colors.black87,
@@ -150,15 +138,15 @@ class MyApp extends StatelessWidget {
                 brightness: Brightness.dark,
               ),
               scaffoldBackgroundColor: const Color(0xFF0D1B2A),
-              textTheme: applyBlackMangoToTitles(interDark),
+              textTheme: interTitlesOnly(interDark),
               cardColor: Colors.white.withOpacity(0.10),
-              appBarTheme: AppBarTheme(
+              appBarTheme: const AppBarTheme(
                 backgroundColor: Colors.transparent,
                 elevation: 0,
-                iconTheme: const IconThemeData(color: Colors.white),
-                titleTextStyle: const TextStyle(
-                  fontFamily: 'Tan Mon Cheri',
-                  fontFamilyFallback: ['Inter', 'sans-serif'],
+                iconTheme: IconThemeData(color: Colors.white),
+                titleTextStyle: TextStyle(
+                  // Use Inter for all app bar titles by default (dark)
+                  fontFamily: 'Inter',
                   fontSize: 20,
                   fontWeight: FontWeight.w600,
                   color: Colors.white,
@@ -187,6 +175,17 @@ class MyApp extends StatelessWidget {
 final ValueNotifier<ThemeMode> _themeMode = ValueNotifier<ThemeMode>(
   ThemeMode.system,
 );
+
+Future<String> _ensureUid() async {
+  final auth = FirebaseAuth.instance;
+  final current = auth.currentUser;
+  if (current != null) return current.uid;
+  final cred = await auth.signInAnonymously();
+  if (cred.user == null) {
+    throw Exception('Sign-in failed');
+  }
+  return cred.user!.uid;
+}
 
 class MyHomePage extends StatefulWidget {
   const MyHomePage({
@@ -224,6 +223,7 @@ class _MyHomePageState extends State<MyHomePage> {
   Widget build(BuildContext context) {
     final pages = <Widget>[
       const _MyTripsPage(),
+      const _TimelinePage(),
       const _WishlistPage(),
       const _GroupsPage(),
     ];
@@ -232,7 +232,23 @@ class _MyHomePageState extends State<MyHomePage> {
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: Text(widget.title),
+        title: Builder(
+          builder: (context) {
+            // Use special font only for the literal home title 'Clone Trip'
+            if (widget.title == 'Clone Trip') {
+              return const Text(
+                'Clone Trip',
+                style: TextStyle(
+                  fontFamily: 'Tan Mon Cheri',
+                  fontFamilyFallback: ['Inter', 'sans-serif'],
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                ),
+              );
+            }
+            return Text(widget.title);
+          },
+        ),
         backgroundColor: Colors.transparent,
         actions: const [_ThemeModeToggle()],
       ),
@@ -270,6 +286,11 @@ class _MyHomePageState extends State<MyHomePage> {
             label: 'My Trips',
           ),
           NavigationDestination(
+            icon: Icon(Icons.timeline_outlined),
+            selectedIcon: Icon(Icons.timeline),
+            label: 'Timeline',
+          ),
+          NavigationDestination(
             icon: Icon(Icons.favorite_border),
             selectedIcon: Icon(Icons.favorite),
             label: 'Wishlist',
@@ -281,6 +302,148 @@ class _MyHomePageState extends State<MyHomePage> {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _TimelinePage extends StatelessWidget {
+  const _TimelinePage();
+
+  @override
+  Widget build(BuildContext context) {
+    final data = DataServiceScope.of(context);
+    final userId = FirebaseAuth.instance.currentUser?.uid ?? 'demo';
+    return StreamBuilder(
+      stream: data.watchItineraries(userId), // all itineraries
+      builder: (context, snapshot) {
+        final items = snapshot.data ?? const [];
+        // Build map year -> month -> itineraries
+        String ymOf(Itinerary t) {
+          final iso = t.startDateIso ?? t.endDateIso;
+          if (iso == null || iso.length < 7) return 'Unknown';
+          return iso.substring(0, 7); // YYYY-MM
+        }
+
+        String yOf(String ym) => ym.length >= 4 ? ym.substring(0, 4) : ym;
+        String mOf(String ym) => ym.length >= 7 ? ym.substring(5, 7) : '';
+        const months = [
+          'January',
+          'February',
+          'March',
+          'April',
+          'May',
+          'June',
+          'July',
+          'August',
+          'September',
+          'October',
+          'November',
+          'December',
+        ];
+
+        final Map<String, Map<String, List<Itinerary>>> byYearMonth = {};
+        for (final t in items) {
+          final ym = ymOf(t);
+          final y = yOf(ym);
+          final m = mOf(ym);
+          final yMap = byYearMonth.putIfAbsent(y, () => {});
+          (yMap[m] ??= <Itinerary>[]).add(t);
+        }
+
+        final years = byYearMonth.keys.toList()
+          ..sort((a, b) => b.compareTo(a)); // recent year first
+
+        return ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            // Vertical axis with year left and months right
+            for (final y in years) ...[
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(
+                    width: 72,
+                    child: Text(
+                      y,
+                      style: Theme.of(context).textTheme.titleLarge,
+                      textAlign: TextAlign.right,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  // axis line
+                  Container(
+                    width: 2,
+                    height: 8,
+                    color: Theme.of(context).dividerColor,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              // months for this year (descending)
+              Builder(
+                builder: (ctx) {
+                  final monthsMap = byYearMonth[y]!;
+                  final monthKeys = monthsMap.keys.toList()
+                    ..sort((a, b) => b.compareTo(a));
+                  return Column(
+                    children: [
+                      for (final m in monthKeys) ...[
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const SizedBox(width: 72),
+                            // axis line extended
+                            Container(
+                              width: 2,
+                              height: 24,
+                              color: Theme.of(context).dividerColor,
+                            ),
+                            const SizedBox(width: 12),
+                            SizedBox(
+                              width: 120,
+                              child: Text(
+                                m.isEmpty
+                                    ? ''
+                                    : months[(int.tryParse(m) ?? 1) - 1],
+                                style: Theme.of(context).textTheme.titleMedium,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: [
+                                  for (final t in monthsMap[m]!)
+                                    OutlinedButton(
+                                      onPressed: () {
+                                        Navigator.of(context).push(
+                                          MaterialPageRoute(
+                                            builder: (_) => ItineraryEditorPage(
+                                              itineraryId: t.id,
+                                              title: t.title,
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                      child: Text(t.title),
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+                    ],
+                  );
+                },
+              ),
+              const SizedBox(height: 16),
+            ],
+          ],
+        );
+      },
     );
   }
 }
@@ -299,6 +462,138 @@ class _MyTripsPage extends StatelessWidget {
         return ListView(
           padding: const EdgeInsets.all(16),
           children: [
+            // Current Trip quick-add section (above Current Itineraries)
+            Builder(
+              builder: (ctx) {
+                final current = items.where((t) => t.isCurrent).toList();
+                if (current.isEmpty) return const SizedBox.shrink();
+                final trip = current.first;
+                final titleCtrl = TextEditingController();
+                final priceCtrl = TextEditingController();
+                return Card(
+                  elevation: 0,
+                  color: Theme.of(context).cardColor,
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Current Trip: ${trip.title}',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        const SizedBox(height: 8),
+                        LayoutBuilder(
+                          builder: (context, constraints) {
+                            final double total = constraints.maxWidth;
+                            // Reserve ~110 for price and ~84 for button and small gaps
+                            final double titleWidth = total - 110 - 84 - 24;
+                            // Ensure non-negative, normalized constraints for the text field
+                            final double fieldMaxWidth =
+                                (titleWidth.isFinite ? titleWidth : total)
+                                    .clamp(0.0, total)
+                                    .toDouble();
+                            return Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              children: [
+                                ConstrainedBox(
+                                  constraints: BoxConstraints(
+                                    maxWidth: fieldMaxWidth,
+                                  ),
+                                  child: TextField(
+                                    controller: titleCtrl,
+                                    decoration: const InputDecoration(
+                                      hintText: 'Add location or activity',
+                                    ),
+                                  ),
+                                ),
+                                SizedBox(
+                                  width: 110,
+                                  child: TextField(
+                                    controller: priceCtrl,
+                                    decoration: const InputDecoration(
+                                      hintText: 'USD',
+                                    ),
+                                    keyboardType:
+                                        const TextInputType.numberWithOptions(
+                                          decimal: true,
+                                        ),
+                                  ),
+                                ),
+                                FilledButton(
+                                  onPressed: () async {
+                                    final title = titleCtrl.text.trim();
+                                    if (title.isEmpty) return;
+                                    final price = double.tryParse(
+                                      priceCtrl.text.trim(),
+                                    );
+                                    // Compute correct day: today if within trip window
+                                    DateTime today = DateTime.now();
+                                    DateTime? start = DateTime.tryParse(
+                                      trip.startDateIso ?? '',
+                                    );
+                                    DateTime? end = DateTime.tryParse(
+                                      trip.endDateIso ?? '',
+                                    );
+                                    String toYmd(DateTime d) {
+                                      final mm = d.month.toString().padLeft(
+                                        2,
+                                        '0',
+                                      );
+                                      final dd = d.day.toString().padLeft(
+                                        2,
+                                        '0',
+                                      );
+                                      return '${d.year}-$mm-$dd';
+                                    }
+
+                                    String dayIso;
+                                    if (start != null && end != null) {
+                                      final DateTime dayOnly = DateTime(
+                                        today.year,
+                                        today.month,
+                                        today.day,
+                                      );
+                                      if (dayOnly.isBefore(start)) {
+                                        dayIso = toYmd(start);
+                                      } else if (dayOnly.isAfter(end)) {
+                                        dayIso = toYmd(end);
+                                      } else {
+                                        dayIso = toYmd(dayOnly);
+                                      }
+                                    } else if (start != null) {
+                                      dayIso = toYmd(start);
+                                    } else {
+                                      final DateTime dayOnly = DateTime(
+                                        today.year,
+                                        today.month,
+                                        today.day,
+                                      );
+                                      dayIso = toYmd(dayOnly);
+                                    }
+                                    await data.quickAddActivityAndExpense(
+                                      itineraryId: trip.id,
+                                      title: title,
+                                      dayIso: dayIso,
+                                      priceUsd: price,
+                                    );
+                                    titleCtrl.clear();
+                                    priceCtrl.clear();
+                                  },
+                                  child: const Text('Add'),
+                                ),
+                              ],
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
             const _ProfileHeader(),
             const SizedBox(height: 16),
             const _SectionTitle('Current Itineraries'),
@@ -307,9 +602,10 @@ class _MyTripsPage extends StatelessWidget {
               _TripCardMock(
                 title: t.title,
                 countryCode: t.countryCode,
-                dates: t.startDateIso != null && t.endDateIso != null
+                cities: t.cities,
+                datesLabel: (t.startDateIso != null && t.endDateIso != null)
                     ? '${t.startDateIso} - ${t.endDateIso}'
-                    : 'Planned',
+                    : (t.startDateIso ?? t.endDateIso ?? ''),
                 onTap: () {
                   Navigator.of(context).push(
                     MaterialPageRoute(
@@ -332,21 +628,22 @@ class _MyTripsPage extends StatelessWidget {
                     backgroundColor: Colors.transparent,
                     builder: (ctx) {
                       return AddItinerarySheet(
-                        onSubmit:
-                            ({
-                              required String title,
-                              required String countryCode,
-                              String? startDateIso,
-                              String? endDateIso,
-                            }) async {
-                              await data.createItinerary(
-                                userId: userId,
-                                title: title,
-                                countryCode: countryCode,
-                                startDateIso: startDateIso,
-                                endDateIso: endDateIso,
-                              );
-                            },
+                        onSubmit: ({
+                          required String title,
+                          String? countryCode,
+                          List<String>? cities,
+                          String? startDateIso,
+                          String? endDateIso,
+                        }) async {
+                          await data.createItinerary(
+                            userId: userId,
+                            title: title,
+                            countryCode: countryCode,
+                            cities: cities,
+                            startDateIso: startDateIso,
+                            endDateIso: endDateIso,
+                          );
+                        },
                       );
                     },
                   );
@@ -382,7 +679,10 @@ class _WishlistPage extends StatelessWidget {
               _TripCardMock(
                 title: t.title,
                 countryCode: t.countryCode,
-                dates: 'Someday',
+                cities: t.cities,
+                datesLabel: (t.startDateIso != null && t.endDateIso != null)
+                    ? '${t.startDateIso} - ${t.endDateIso}'
+                    : (t.startDateIso ?? t.endDateIso ?? ''),
                 onTap: () {
                   Navigator.of(context).push(
                     MaterialPageRoute(
@@ -406,22 +706,23 @@ class _WishlistPage extends StatelessWidget {
                     builder: (ctx) {
                       return AddItinerarySheet(
                         isWishlist: true,
-                        onSubmit:
-                            ({
-                              required String title,
-                              required String countryCode,
-                              String? startDateIso,
-                              String? endDateIso,
-                            }) async {
-                              await data.createItinerary(
-                                userId: userId,
-                                title: title,
-                                countryCode: countryCode,
-                                startDateIso: startDateIso,
-                                endDateIso: endDateIso,
-                                isWishlist: true,
-                              );
-                            },
+                        onSubmit: ({
+                          required String title,
+                          String? countryCode,
+                          List<String>? cities,
+                          String? startDateIso,
+                          String? endDateIso,
+                        }) async {
+                          await data.createItinerary(
+                            userId: userId,
+                            title: title,
+                            countryCode: countryCode,
+                            cities: cities,
+                            startDateIso: startDateIso,
+                            endDateIso: endDateIso,
+                            isWishlist: true,
+                          );
+                        },
                       );
                     },
                   );
@@ -592,7 +893,65 @@ class _ProfileHeader extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _UserNameWithFlag(name: displayName, countryCode: code),
+                      InkWell(
+                        onTap: () async {
+                          final nameCtrl = TextEditingController(
+                            text: displayName,
+                          );
+                          final countryCtrl = TextEditingController(text: code);
+                          await showDialog(
+                            context: context,
+                            builder: (ctx) {
+                              return AlertDialog(
+                                title: const Text('Edit Traveler'),
+                                content: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    TextField(
+                                      controller: nameCtrl,
+                                      decoration: const InputDecoration(
+                                        labelText: 'Display Name',
+                                      ),
+                                    ),
+                                    TextField(
+                                      controller: countryCtrl,
+                                      decoration: const InputDecoration(
+                                        labelText: 'Country Code (e.g., US)',
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(ctx),
+                                    child: const Text('Cancel'),
+                                  ),
+                                  FilledButton(
+                                    onPressed: () async {
+                                      await data.updateUserProfile(
+                                        userId: userId,
+                                        updates: {
+                                          'displayName': nameCtrl.text.trim(),
+                                          'countryCode': countryCtrl.text
+                                              .trim()
+                                              .toUpperCase(),
+                                        },
+                                      );
+                                      if (ctx.mounted) Navigator.pop(ctx);
+                                    },
+                                    child: const Text('Save'),
+                                  ),
+                                ],
+                              );
+                            },
+                          );
+                        },
+                        child: _UserNameWithFlag(
+                          name: displayName,
+                          countryCode: code,
+                        ),
+                      ),
                       const SizedBox(height: 4),
                       Text(subtitle),
                     ],
@@ -655,13 +1014,15 @@ class _TripCardMock extends StatelessWidget {
   const _TripCardMock({
     required this.title,
     required this.countryCode,
-    required this.dates,
+    required this.cities,
+    required this.datesLabel,
     this.onTap,
   });
 
   final String title;
   final String countryCode;
-  final String dates;
+  final List<String> cities;
+  final String datesLabel;
   final VoidCallback? onTap;
 
   @override
@@ -671,12 +1032,23 @@ class _TripCardMock extends StatelessWidget {
       color: Theme.of(context).cardColor,
       margin: const EdgeInsets.only(bottom: 12),
       child: ListTile(
-        leading: Text(
-          _countryCodeToEmoji(countryCode),
-          style: const TextStyle(fontSize: 24),
-        ),
+        leading: (countryCode.trim().length == 2)
+            ? Text(
+                _countryCodeToEmoji(countryCode),
+                style: const TextStyle(fontSize: 24),
+              )
+            : const Icon(Icons.place_outlined),
         title: Text(title),
-        subtitle: Text(dates),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (cities.isNotEmpty)
+              Text(cities.join(', ')),
+            if ((datesLabel).isNotEmpty)
+              Text(datesLabel),
+          ],
+        ),
         trailing: IconButton(
           icon: const Icon(Icons.qr_code_2),
           onPressed: () => QrShareSheet.show(

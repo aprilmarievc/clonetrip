@@ -17,7 +17,8 @@ abstract class DataService {
   Future<void> createItinerary({
     required String userId,
     required String title,
-    required String countryCode,
+    String? countryCode,
+    List<String>? cities,
     String? startDateIso,
     String? endDateIso,
     bool isWishlist = false,
@@ -47,6 +48,18 @@ abstract class DataService {
     required String code,
     required String userId,
   });
+
+  Future<void> updateUserProfile({
+    required String userId,
+    required Map<String, dynamic> updates,
+  });
+
+  Future<void> quickAddActivityAndExpense({
+    required String itineraryId,
+    required String title,
+    required String dayIso,
+    double? priceUsd,
+  });
 }
 
 class FirestoreDataService implements DataService {
@@ -67,14 +80,16 @@ class FirestoreDataService implements DataService {
 
   @override
   Stream<List<Itinerary>> watchItineraries(String userId, {bool? wishlist}) {
-    Query<Map<String, dynamic>> col = _db
+    final Query<Map<String, dynamic>> col = _db
         .collection('itineraries')
         .where('userId', isEqualTo: userId);
-    if (wishlist != null) col = col.where('isWishlist', isEqualTo: wishlist);
-    return col.snapshots().map(
-      (snap) =>
-          snap.docs.map((d) => Itinerary.fromMap(d.id, d.data())).toList(),
-    );
+    return col.snapshots().map((snap) {
+      final items = snap.docs
+          .map((d) => Itinerary.fromMap(d.id, d.data()))
+          .toList();
+      if (wishlist == null) return items;
+      return items.where((i) => i.isWishlist == wishlist).toList();
+    });
   }
 
   @override
@@ -110,20 +125,24 @@ class FirestoreDataService implements DataService {
   Future<void> createItinerary({
     required String userId,
     required String title,
-    required String countryCode,
+    String? countryCode,
+    List<String>? cities,
     String? startDateIso,
     String? endDateIso,
     bool isWishlist = false,
   }) async {
-    await _db.collection('itineraries').add({
+    final payload = <String, dynamic>{
       'userId': userId,
       'title': title,
-      'countryCode': countryCode,
+      if (countryCode != null && countryCode.trim().isNotEmpty)
+        'countryCode': countryCode.trim().toUpperCase(),
+      if (cities != null && cities.isNotEmpty) 'cities': cities,
       if (startDateIso != null) 'startDateIso': startDateIso,
       if (endDateIso != null) 'endDateIso': endDateIso,
       'isWishlist': isWishlist,
       'createdAt': FieldValue.serverTimestamp(),
-    });
+    };
+    await _db.collection('itineraries').add(payload);
   }
 
   @override
@@ -199,6 +218,49 @@ class FirestoreDataService implements DataService {
       tx.update(inviteRef, {'active': false});
     });
     return true;
+  }
+
+  @override
+  Future<void> updateUserProfile({
+    required String userId,
+    required Map<String, dynamic> updates,
+  }) async {
+    await _db
+        .collection('users')
+        .doc(userId)
+        .set(updates, SetOptions(merge: true));
+  }
+
+  @override
+  Future<void> quickAddActivityAndExpense({
+    required String itineraryId,
+    required String title,
+    required String dayIso,
+    double? priceUsd,
+  }) async {
+    final ref = _db.collection('itineraries').doc(itineraryId);
+    await _db.runTransaction((tx) async {
+      final snap = await tx.get(ref);
+      final data = snap.data() ?? <String, dynamic>{};
+      final List activities = (data['activities'] as List?) ?? <dynamic>[];
+      activities.add({
+        'title': title,
+        'whenIso': dayIso,
+        'mustDo': true,
+        if (priceUsd != null) 'price': priceUsd,
+      });
+      final List expenses = (data['tripExpenses'] as List?) ?? <dynamic>[];
+      if (priceUsd != null) {
+        expenses.add({
+          'amount': priceUsd,
+          'currency': 'USD',
+          'description': title,
+          'source': 'quick',
+          'whenIso': dayIso,
+        });
+      }
+      tx.update(ref, {'activities': activities, 'tripExpenses': expenses});
+    });
   }
 
   String _randomCode({int length = 8}) {
@@ -303,7 +365,8 @@ class MockDataService implements DataService {
   Future<void> createItinerary({
     required String userId,
     required String title,
-    required String countryCode,
+    String? countryCode,
+    List<String>? cities,
     String? startDateIso,
     String? endDateIso,
     bool isWishlist = false,
@@ -332,6 +395,22 @@ class MockDataService implements DataService {
   @override
   Future<String> createGroupInvite(String groupId) async {
     return 'mock://invite/$groupId';
+  }
+
+  @override
+  Future<void> updateUserProfile({
+    required String userId,
+    required Map<String, dynamic> updates,
+  }) async {}
+
+  @override
+  Future<void> quickAddActivityAndExpense({
+    required String itineraryId,
+    required String title,
+    required String dayIso,
+    double? priceUsd,
+  }) async {
+    // No-op in mock
   }
 }
 
